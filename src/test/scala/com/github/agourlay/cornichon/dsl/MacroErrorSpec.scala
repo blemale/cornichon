@@ -18,7 +18,7 @@ class MacroErrorSpec extends WordSpec with Matchers {
                 EffectStep.fromSync("just testing", identity)
 
                 Repeat(10) {
-                  EffectStep("just testing repeat", s => Future.successful(s))
+                  EffectStep.fromAsync("just testing repeat", s => Future.successful(s))
                 }
               }
             }
