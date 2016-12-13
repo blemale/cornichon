@@ -41,7 +41,7 @@ trait MathSteps {
       )
   }
 
-  def calculate_point_in_circle(target: String) = EffectStep(
+  def calculate_point_in_circle(target: String) = EffectStep.fromAsync(
     title = s"calculate points inside circle",
     effect = s ⇒ Future {
     val x = s.get("x").toDouble
@@ -52,7 +52,7 @@ trait MathSteps {
   )
 
   def estimate_pi_from_ratio(inside: String, target: String) =
-    EffectStep(
+    EffectStep.fromAsync(
       title = s"estimate PI from ratio into key '$target'",
       effect = s ⇒ Future {
       val insides = s.getHistory(inside)

@@ -55,7 +55,7 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
         client.runRequest(resolvedRequest.method, resolvedRequest.url, resolvedRequest.body, resolvedRequest.params, resolvedRequest.headers)
       }
       newSession ← EitherT(Future.successful(handleResponse(resp, expectedStatus, extractor)(s)))
-    } yield (resp, newSession)
+    } yield newSession
 
   def runStreamRequest(r: HttpStreamedRequest, expectedStatus: Option[Int], extractor: ResponseExtractor)(s: Session) =
     for {
@@ -64,7 +64,7 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
         client.openStream(r.stream, resolvedRequest.url, resolvedRequest.params, resolvedRequest.headers, r.takeWithin)
       }
       newSession ← EitherT(Future.successful(handleResponse(resp, expectedStatus, extractor)(s)))
-    } yield (resp, newSession)
+    } yield newSession
 
   def expectStatusCode(httpResponse: CornichonHttpResponse, expected: Option[Int]): Either[CornichonError, CornichonHttpResponse] =
     expected.map { expectedStatus ⇒
@@ -130,11 +130,11 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
     EitherT(failedAfter)
   }
 
-  def requestEffect[A: Show: Resolvable: Encoder](request: HttpRequest[A], extractor: ResponseExtractor = NoOpExtraction, expectedStatus: Option[Int] = None): Session ⇒ Future[Session] =
-    s ⇒ runRequest(request, expectedStatus, extractor)(s).fold(e ⇒ throw e, _._2)
+  def requestEffect[A: Show: Resolvable: Encoder](request: HttpRequest[A], extractor: ResponseExtractor = NoOpExtraction, expectedStatus: Option[Int] = None): Session ⇒ Future[Either[CornichonError, Session]] =
+    s ⇒ runRequest(request, expectedStatus, extractor)(s).value
 
-  def streamEffect(request: HttpStreamedRequest, expectedStatus: Option[Int] = None, extractor: ResponseExtractor = NoOpExtraction): Session ⇒ Future[Session] =
-    s ⇒ runStreamRequest(request, expectedStatus, extractor)(s).fold(e ⇒ throw e, _._2)
+  def streamEffect(request: HttpStreamedRequest, expectedStatus: Option[Int] = None, extractor: ResponseExtractor = NoOpExtraction): Session ⇒ Future[Either[CornichonError, Session]] =
+    s ⇒ runStreamRequest(request, expectedStatus, extractor)(s).value
 
   def openSSE(url: String, takeWithin: FiniteDuration, params: Seq[(String, String)], headers: Seq[(String, String)],
     extractor: ResponseExtractor = NoOpExtraction, expectedStatus: Option[Int] = None) = {

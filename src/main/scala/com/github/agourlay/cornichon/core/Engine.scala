@@ -40,7 +40,7 @@ class Engine(stepPreparers: List[StepPreparer], executionContext: ExecutionConte
   def runSteps(runState: RunState): Future[(RunState, FailedStep Either Done)] =
     runState.remainingSteps.headOption.map { currentStep ⇒
       val preparedStep = stepPreparers.foldLeft[CornichonError Either Step](Right(currentStep)) {
-        (xorStep, stepPrepared) ⇒ xorStep.flatMap(stepPrepared.run(runState.session))
+        (xorStep, stepPreparer) ⇒ xorStep.flatMap(stepPreparer.run(runState.session))
       }
       preparedStep.fold(
         ce ⇒ Future.successful(Engine.exceptionToFailureStep(currentStep, runState, NonEmptyList.of(ce))),

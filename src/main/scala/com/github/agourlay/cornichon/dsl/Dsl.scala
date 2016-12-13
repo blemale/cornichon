@@ -100,7 +100,7 @@ trait Dsl extends Instances {
       WithDataInputStep(steps, where)
     }
 
-  def wait(duration: FiniteDuration) = EffectStep(
+  def wait(duration: FiniteDuration) = EffectStep.fromAsync(
     title = s"wait for ${duration.toMillis} millis",
     effect = s ⇒ Timeouts.timeout(duration)(s)
   )
