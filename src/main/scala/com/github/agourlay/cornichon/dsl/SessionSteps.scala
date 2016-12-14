@@ -3,7 +3,7 @@ package com.github.agourlay.cornichon.dsl
 import com.github.agourlay.cornichon.core.SessionKey
 import com.github.agourlay.cornichon.json.JsonSteps.JsonStepBuilder
 import com.github.agourlay.cornichon.resolver.Resolver
-import com.github.agourlay.cornichon.steps.regular.assertStep.{ AssertStep, CustomMessageEqualityAssertion, GenericEqualityAssertion }
+import com.github.agourlay.cornichon.steps.regular.assertStep._
 import com.github.agourlay.cornichon.util.Instances._
 
 object SessionSteps {
@@ -18,7 +18,17 @@ object SessionSteps {
 
     def is(expected: String) = AssertStep(
       title = s"session key '$key' is '$expected'",
-      action = s ⇒ GenericEqualityAssertion(resolver.fillPlaceholdersUnsafe(expected)(s), s.get(key, indice))
+      action = s ⇒ {
+      val values = for {
+        resolved ← resolver.fillPlaceholders(expected)(s)
+        sessionValue ← s.get(key, indice)
+      } yield (resolved, sessionValue)
+
+      values.fold(
+        e ⇒ Assertion.failWith(e),
+        inputs ⇒ GenericEqualityAssertion(inputs._1, inputs._2)
+      )
+    }
     )
 
     def isPresent = AssertStep(

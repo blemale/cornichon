@@ -21,7 +21,7 @@ trait CornichonJson {
 
   def parseJson[A: Encoder: Show](input: A): Either[CornichonError, Json] = input match {
     case s: String if s.trim.headOption.contains('|') ⇒
-      Right(Json.fromValues(parseDataTable(s).map(Json.fromJsonObject))) // table
+      parseDataTable(s).map(list ⇒ Json.fromValues(list.map(Json.fromJsonObject))) // table
     case s: String if s.trim.headOption.contains('{') ⇒
       parseString(s) // parse object
     case s: String if s.trim.headOption.contains('[') ⇒
@@ -32,14 +32,13 @@ trait CornichonJson {
       Either.catchNonFatal(input.asJson).leftMap(f ⇒ MalformedJsonError(input.show, f.getMessage))
   }
 
-  def parseJsonUnsafe[A: Encoder: Show](input: A): Json =
-    parseJson(input).fold(e ⇒ throw e, identity)
-
   def parseString(s: String) =
     io.circe.parser.parse(s).leftMap(f ⇒ MalformedJsonError(s, f.message))
 
-  def parseDataTable(table: String): List[JsonObject] =
-    DataTableParser.parseDataTable(table).objectList
+  def parseStringUnsafe(s: String): Json = parseString(s).fold(e ⇒ throw CornichonError.toException(e), identity)
+
+  def parseDataTable(table: String) =
+    DataTableParser.parseDataTable(table).map(_.objectList)
 
   def parseGraphQLJson(input: String) = QueryParser.parseInput(input) match {
     case Success(value) ⇒ Right(value.convertMarshaled[Json])
@@ -47,7 +46,7 @@ trait CornichonJson {
   }
 
   def parseGraphQLJsonUnsafe(input: String) =
-    parseGraphQLJson(input).fold(e ⇒ throw e, identity)
+    parseGraphQLJson(input).fold(e ⇒ throw CornichonError.toException(e), identity)
 
   def parseArray(input: String): Either[CornichonError, List[Json]] =
     parseJson(input).flatMap { json ⇒

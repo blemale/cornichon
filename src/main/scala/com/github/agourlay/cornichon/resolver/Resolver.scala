@@ -62,9 +62,9 @@ class Resolver(extractors: Map[String, Mapper]) {
         case Right(None)            ⇒ Left(GeneratorEmptyError(ph.fullKey))
       }
     case TextMapper(key, transform) ⇒
-      session.getXor(key, ph.index).map(transform)
+      session.get(key, ph.index).map(transform)
     case JsonMapper(key, jsonPath, transform) ⇒
-      session.getXor(key, ph.index).flatMap { sessionValue ⇒
+      session.get(key, ph.index).flatMap { sessionValue ⇒
         // No placeholders in JsonMapper to avoid accidental infinite recursions.
         JsonPath.run(jsonPath, sessionValue)
           .map(CornichonJson.jsonStringValue)
@@ -94,9 +94,6 @@ class Resolver(extractors: Map[String, Mapper]) {
 
     findPlaceholders(input).flatMap(loop(_, input))
   }
-
-  def fillPlaceholdersUnsafe(input: String)(session: Session): String =
-    fillPlaceholders(input)(session).fold(e ⇒ throw e, identity)
 
   def fillPlaceholders(params: Seq[(String, String)])(session: Session): Either[CornichonError, Seq[(String, String)]] = {
     def loop(params: Seq[(String, String)], session: Session, acc: Seq[(String, String)]): Either[CornichonError, Seq[(String, String)]] =

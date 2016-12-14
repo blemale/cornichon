@@ -1,8 +1,9 @@
 package com.github.agourlay.cornichon.dsl
 
 import cats.Show
+import cats.syntax.either._
 import com.github.agourlay.cornichon.CornichonFeature
-import com.github.agourlay.cornichon.core.{ FeatureDef, Session, Step, Scenario ⇒ ScenarioDef }
+import com.github.agourlay.cornichon.core.{ CornichonError, FeatureDef, Session, Step, Scenario ⇒ ScenarioDef }
 import com.github.agourlay.cornichon.dsl.SessionSteps.SessionStepBuilder
 import com.github.agourlay.cornichon.steps.regular._
 import com.github.agourlay.cornichon.steps.wrapped._
@@ -107,12 +108,9 @@ trait Dsl extends Instances {
 
   def save(input: (String, String)) = {
     val (key, value) = input
-    EffectStep.fromSync(
+    EffectStep.fromSyncEither(
       s"add value '$value' to session under key '$key' ",
-      s ⇒ {
-        val resolved = resolver.fillPlaceholdersUnsafe(value)(s)
-        s.addValue(key, resolved)
-      }
+      s ⇒ resolver.fillPlaceholders(value)(s).flatMap(s.addValue(key, _))
     )
   }
 
@@ -123,12 +121,14 @@ trait Dsl extends Instances {
 
   def session_value(key: String) = SessionStepBuilder(resolver, key)
 
-  def show_session = DebugStep(s ⇒ s"Session content is\n${s.prettyPrint}")
+  def show_session = DebugStep.fromFctString(s ⇒ s"Session content is\n${s.prettyPrint}")
 
-  def show_session(key: String, indice: Option[Int] = None, transform: String ⇒ String = identity) =
-    DebugStep(s ⇒ s"Session content for key '$key${indice.map(i ⇒ s"[$i]").getOrElse("")}' is\n${transform(s.get(key, indice))}")
+  def show_session(key: String, indice: Option[Int] = None, transform: Either[CornichonError, String] ⇒ Either[CornichonError, String] = identity) =
+    DebugStep(s ⇒ {
+      transform(s.get(key, indice)).map(v ⇒ s"Session content for key '$key${indice.map(i ⇒ s"[$i]").getOrElse("")}' is\n$v")
+    })
 
-  def print_step(message: String) = DebugStep(_ ⇒ message)
+  def print_step(message: String) = DebugStep.fromString(message)
 }
 
 object Dsl {
@@ -139,11 +139,12 @@ object Dsl {
     val keys = args.map(_.fromKey)
     val extractors = args.map(_.trans)
     val targets = args.map(_.target)
-    EffectStep.fromSync(
+    EffectStep.fromSyncEither(
       s"save parts from session '${displayStringPairs(keys.zip(targets))}'",
       session ⇒ {
-        val extracted = session.getList(keys).zip(extractors).map { case (value, extractor) ⇒ extractor(session, value) }
-        targets.zip(extracted).foldLeft(session)((s, tuple) ⇒ s.addValue(tuple._1, tuple._2))
+        // TODO align on EITHER
+        val extracted = session.getList(keys).zip(extractors).map { case (value, extractor) ⇒ extractor(session, ???) }
+        targets.zip(extracted).foldLeft(Either.right[CornichonError, Session](session))((s, tuple) ⇒ s.flatMap(_.addValue(tuple._1, tuple._2)))
       }
     )
   }

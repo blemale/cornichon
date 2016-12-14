@@ -1,6 +1,6 @@
 package com.github.agourlay.cornichon.dsl
 
-import com.github.agourlay.cornichon.core.Session
+import com.github.agourlay.cornichon.core.{ CornichonError, Session }
 
 import scala.concurrent.Future
 
@@ -15,8 +15,8 @@ trait BlockScopedResource {
 }
 
 trait ResourceHandle extends CloseableResource {
-  def resourceResults(): Future[Session]
-  val initialisedSession: Session
+  def resourceResults(): Future[Either[CornichonError, Session]]
+  val initialisedSession: Either[CornichonError, Session]
 }
 
 trait CloseableResource {

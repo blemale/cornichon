@@ -34,8 +34,10 @@ case class HttpMockServerResource(interface: Option[String], label: String, port
   def requestsResults(mockRequestHandler: MockServerRequestHandler) =
     mockRequestHandler.fetchRecordedRequestsAsJson().map { jsonRequests ⇒
       Session.newEmpty
-        .addValue(s"$sessionTarget$receivedBodiesSuffix", Json.fromValues(jsonRequests).spaces2)
-        .addValue(s"$sessionTarget$nbReceivedCallsSuffix", jsonRequests.size.toString)
+        .addValues(Seq(
+          s"$sessionTarget$receivedBodiesSuffix" → Json.fromValues(jsonRequests).spaces2,
+          s"$sessionTarget$nbReceivedCallsSuffix" → jsonRequests.size.toString
+        ))
     }
 }
 

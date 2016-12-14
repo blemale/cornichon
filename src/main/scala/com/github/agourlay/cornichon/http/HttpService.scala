@@ -86,7 +86,7 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
       newSession ← fillInSessionWithResponse(session, resExpected, extractor)
     } yield newSession
 
-  private def commonSessionExtraction(session: Session, response: CornichonHttpResponse): Session =
+  private def commonSessionExtraction(session: Session, response: CornichonHttpResponse) =
     session.addValues(Seq(
       lastResponseStatusKey → response.status.intValue().toString,
       lastResponseBodyKey → response.body,
@@ -96,16 +96,17 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
   def fillInSessionWithResponse(session: Session, response: CornichonHttpResponse, extractor: ResponseExtractor): Either[CornichonError, Session] =
     extractor match {
       case NoOpExtraction ⇒
-        Right(commonSessionExtraction(session, response))
+        commonSessionExtraction(session, response)
 
       case RootExtractor(targetKey) ⇒
-        Right(commonSessionExtraction(session, response).addValue(targetKey, response.body))
+        commonSessionExtraction(session, response).flatMap(_.addValue(targetKey, response.body))
 
       case PathExtractor(path, targetKey) ⇒
-        JsonPath.run(path, response.body)
-          .map { extractedJson ⇒
-            commonSessionExtraction(session, response).addValue(targetKey, jsonStringValue(extractedJson))
-          }
+        for {
+          extractedJson ← JsonPath.run(path, response.body)
+          commonExtraction ← commonSessionExtraction(session, response)
+          assembled ← commonExtraction.addValue(targetKey, jsonStringValue(extractedJson))
+        } yield assembled
     }
 
   private def extractWithHeadersSession(session: Session): Seq[(String, String)] =
