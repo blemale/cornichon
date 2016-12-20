@@ -5,9 +5,8 @@ import cats.syntax.show._
 import com.github.agourlay.cornichon.core.CornichonError
 
 import scala.concurrent.duration.FiniteDuration
-import scala.util.control.NoStackTrace
 
-sealed trait HttpError extends CornichonError with NoStackTrace
+sealed trait HttpError extends CornichonError
 
 case class TimeoutErrorAfter[A: Show](request: A, after: FiniteDuration) extends HttpError {
   val baseErrorMessage =

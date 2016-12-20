@@ -3,6 +3,7 @@ package com.github.agourlay.cornichon.core
 import cats.Show
 import cats.syntax.show._
 import cats.syntax.either._
+import cats.syntax.traverse._
 import com.github.agourlay.cornichon.json.{ JsonPath, NotStringFieldError }
 import com.github.agourlay.cornichon.json.CornichonJson._
 import com.github.agourlay.cornichon.util.Instances._
@@ -36,7 +37,7 @@ case class Session(private val content: Map[String, Vector[String]]) {
 
   def getJsonOpt(key: String, stackingIndice: Option[Int] = None): Option[Json] = getOpt(key, stackingIndice).flatMap(s ⇒ parseJson(s).toOption)
 
-  def getList(keys: Seq[String]) = keys.map(v ⇒ get(v))
+  def getList(keys: Seq[String]): Either[CornichonError, List[String]] = keys.toList.traverseU(v ⇒ get(v))
 
   def getHistory(key: String): Vector[String] = content.getOrElse(key, Vector.empty)
 

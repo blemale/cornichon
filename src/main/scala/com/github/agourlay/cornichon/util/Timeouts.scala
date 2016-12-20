@@ -1,8 +1,10 @@
 package com.github.agourlay.cornichon.util
 
-import java.util.{ TimerTask, Timer }
+import java.util.{ Timer, TimerTask }
 
-import scala.concurrent.{ Future, Promise, ExecutionContext }
+import com.github.agourlay.cornichon.core.CornichonError
+
+import scala.concurrent.{ ExecutionContext, Future, Promise }
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
@@ -38,9 +40,9 @@ object Timeouts {
     promise.future
   }
 
-  def failAfter[A](after: FiniteDuration)(what: ⇒ Future[A])(error: Exception)(implicit ec: ExecutionContext, timer: Timer): Future[A] = {
-    val timeoutValue = timeoutF(after)(Future.failed(error))
-    Future.firstCompletedOf(Seq(timeoutValue, what))
+  def errorAfter[A, B](after: FiniteDuration)(what: ⇒ Future[A])(error: CornichonError)(implicit ec: ExecutionContext, timer: Timer): Future[Either[CornichonError, A]] = {
+    val timeoutValue = timeoutF(after)(Future.successful(Left(error)))
+    Future.firstCompletedOf(Seq(timeoutValue, what.map(Right(_))))
   }
 
 }

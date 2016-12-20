@@ -32,6 +32,9 @@ trait CornichonJson {
       Either.catchNonFatal(input.asJson).leftMap(f ⇒ MalformedJsonError(input.show, f.getMessage))
   }
 
+  def parseJsonUnsafe[A: Encoder: Show](input: A): Json =
+    parseJson(input).fold(e ⇒ throw CornichonError.toException(e), identity)
+
   def parseString(s: String) =
     io.circe.parser.parse(s).leftMap(f ⇒ MalformedJsonError(s, f.message))
 

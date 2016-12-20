@@ -121,13 +121,11 @@ class HttpService(baseUrl: String, requestTimeout: FiniteDuration, client: HttpC
     else baseUrl + input
 
   private def handleRequestFuture[A: Show](request: A, t: FiniteDuration)(f: Future[Either[CornichonError, CornichonHttpResponse]]): EitherT[Future, CornichonError, CornichonHttpResponse] = {
-    val failedAfter = Timeouts.failAfter(t)(f)(TimeoutErrorAfter(request, t))
-      .recover {
-        case NonFatal(failure) ⇒ failure match {
-          case t @ TimeoutErrorAfter(_, _) ⇒ Left(t)
-          case t: Throwable                ⇒ Left(RequestError(request, t))
-        }
-      }
+    val failedAfter = Timeouts
+      .errorAfter(t)(f)(TimeoutErrorAfter(request, t))
+      .map(response ⇒ response.flatMap(identity))
+      .recover { case NonFatal(failure) ⇒ Left(RequestError(request, failure)) }
+
     EitherT(failedAfter)
   }
 

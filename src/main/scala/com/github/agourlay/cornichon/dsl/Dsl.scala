@@ -2,6 +2,7 @@ package com.github.agourlay.cornichon.dsl
 
 import cats.Show
 import cats.syntax.either._
+import cats.syntax.traverse._
 import com.github.agourlay.cornichon.CornichonFeature
 import com.github.agourlay.cornichon.core.{ CornichonError, FeatureDef, Session, Step, Scenario ⇒ ScenarioDef }
 import com.github.agourlay.cornichon.dsl.SessionSteps.SessionStepBuilder
@@ -133,7 +134,7 @@ trait Dsl extends Instances {
 
 object Dsl {
 
-  case class FromSessionSetter(fromKey: String, trans: (Session, String) ⇒ String, target: String)
+  case class FromSessionSetter(fromKey: String, trans: (Session, String) ⇒ Either[CornichonError, String], target: String)
 
   def save_from_session(args: Seq[FromSessionSetter]) = {
     val keys = args.map(_.fromKey)
@@ -142,8 +143,10 @@ object Dsl {
     EffectStep.fromSyncEither(
       s"save parts from session '${displayStringPairs(keys.zip(targets))}'",
       session ⇒ {
-        // TODO align on EITHER
-        val extracted = session.getList(keys).zip(extractors).map { case (value, extractor) ⇒ extractor(session, ???) }
+        for {
+          allValues ← session.getList(keys)
+          extracted ← allValues.zip(extractors).traverseU { case (value, extractor) ⇒ value.map(extractor(session, _)) }
+        } yield x
         targets.zip(extracted).foldLeft(Either.right[CornichonError, Session](session))((s, tuple) ⇒ s.flatMap(_.addValue(tuple._1, tuple._2)))
       }
     )
